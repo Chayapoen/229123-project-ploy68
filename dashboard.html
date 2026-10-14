@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>แดชบอร์ดที่นั่งหอสมุด</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: control bar, KPI strip, then paired panels (zones|hours, floor map|seat detail, what-if|odds ratios); one column on phones */
+:root {
+  --bg: #f5f3f8; --surface: #fdfcfe; --ink: #1a1523; --ink-2: #4f4859; --muted: #847c8f;
+  --line: #e4e0ea; --line-strong: #c7c1d1; --brand: #5a37b5; --on-brand: #ffffff;
+  --accent: #e0901a; --accent-ink: #9c5a00; --accent-soft: #fdf0dc;
+  --neg: #d4573a; --closed: #ebe8ef; --sel-band: #efe9fc; --focus: #7451d6; --bar: #7d5ce0;
+  --tile-ink-low: #1a1523; --tile-ink-high: #ffffff;
+  --seq-0: #efeafc; --seq-1: #d3c6f6; --seq-2: #b49ff0; --seq-3: #9277e6; --seq-4: #7451d6; --seq-5: #5a37b5; --seq-6: #3c2283;
+  --font-display: "Bai Jamjuree", "IBM Plex Sans Thai", "Leelawadee UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Thai", "Leelawadee UI", Tahoma, system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121016; --surface: #1a1720; --ink: #f2eff7; --ink-2: #c3bccf; --muted: #8e8799;
+    --line: #2c2834; --line-strong: #413b4b; --brand: #b49ff0; --on-brand: #140f20;
+    --accent: #f0a540; --accent-ink: #f5b862; --accent-soft: #33260f;
+    --neg: #f08a6e; --closed: #26232c; --sel-band: #2a2340; --focus: #b49ff0; --bar: #9277e6;
+    --tile-ink-low: #f2eff7; --tile-ink-high: #120e1c;
+    --seq-0: #221c33; --seq-1: #2f2550; --seq-2: #3f2f75; --seq-3: #563fa3; --seq-4: #7458d1; --seq-5: #9b85e6; --seq-6: #c4b5f4;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121016; --surface: #1a1720; --ink: #f2eff7; --ink-2: #c3bccf; --muted: #8e8799;
+  --line: #2c2834; --line-strong: #413b4b; --brand: #b49ff0; --on-brand: #140f20;
+  --accent: #f0a540; --accent-ink: #f5b862; --accent-soft: #33260f;
+  --neg: #f08a6e; --closed: #26232c; --sel-band: #2a2340; --focus: #b49ff0; --bar: #9277e6;
+  --tile-ink-low: #f2eff7; --tile-ink-high: #120e1c;
+  --seq-0: #221c33; --seq-1: #2f2550; --seq-2: #3f2f75; --seq-3: #563fa3; --seq-4: #7458d1; --seq-5: #9b85e6; --seq-6: #c4b5f4;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+       padding-inline: 16px; padding-block: 24px 48px; }
+.app { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; line-height: 1.2; text-wrap: balance; }
+p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.eyebrow { font-size: 12px; letter-spacing: .06em; color: var(--brand); }
+h1 { font-size: clamp(26px, 3.6vw, 36px); font-weight: 700; }
+.lede { color: var(--ink-2); max-width: 72ch; }
+.sub { font-size: 13px; color: var(--muted); }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: flex-end; background: var(--surface);
+            border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px;
+            position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 5; }
+.ctl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ctl-label { font-size: 12px; color: var(--muted); }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button { border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); padding: 5px 12px; cursor: pointer; color: var(--ink-2); }
+.seg button:hover { border-color: var(--brand); }
+.seg button[aria-checked="true"] { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.hour-row { display: flex; align-items: center; gap: 10px; }
+#hour { width: 220px; max-width: 50vw; accent-color: var(--brand); }
+#hourOut { font-family: var(--font-data); font-weight: 600; font-size: 18px; min-width: 5ch; }
+.check { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; color: var(--ink-2); }
+.check input { accent-color: var(--brand); width: 16px; height: 16px; }
+
+/* layout */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kpi .k { font-size: 12.5px; color: var(--muted); }
+.kpi .v { font-family: var(--font-data); font-weight: 600; font-size: 26px; font-variant-numeric: tabular-nums; }
+.kpi .v small { font-size: 14px; color: var(--ink-2); font-weight: 500; }
+.kpi .d { font-size: 13px; color: var(--ink-2); }
+.row { display: grid; gap: 18px; align-items: start; }
+.row.r1 { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr); }
+.row.r2 { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+.row.r3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 960px) { .row.r1, .row.r2, .row.r3 { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-width: 0; scroll-margin-top: 150px; }
+.kpis, .row { scroll-margin-top: 150px; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; margin-bottom: 12px; }
+.panel-head h2 { font-size: 18px; font-weight: 600; }
+
+/* zones */
+.zones { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.zone-row { display: grid; grid-template-columns: 74px minmax(0, 1fr) 96px; gap: 10px; align-items: center; }
+.zone-row .zn { font-family: var(--font-display); font-weight: 700; font-size: 17px; line-height: 1.1; }
+.zone-row .zn small { display: block; font-family: var(--font-body); font-weight: 400; font-size: 11.5px; color: var(--muted); }
+.zone-row .zd { font-size: 12.5px; color: var(--ink-2); }
+.zbar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; }
+.zbar i { display: block; height: 100%; background: var(--bar); border-radius: 4px; }
+.zone-row .zv { text-align: right; font-family: var(--font-data); font-weight: 600; }
+.zone-row .zv small { display: block; font-weight: 500; font-size: 11.5px; color: var(--muted); }
+.zone-row.best .zbar i { background: var(--accent); }
+.zone-row.closed { opacity: .55; }
+
+/* charts */
+svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.c-grid { stroke: var(--line); stroke-width: 1; }
+.c-half { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.c-axis { fill: var(--muted); font-family: var(--font-data); font-size: 11px; }
+.c-lab { fill: var(--ink-2); font-family: var(--font-body); font-size: 12px; }
+.c-bar { fill: var(--bar); }
+.c-bar.best { fill: var(--accent); }
+.c-closed { fill: var(--closed); }
+.c-sel { fill: var(--sel-band); }
+.c-val { fill: var(--ink); font-family: var(--font-data); font-size: 11px; font-weight: 600; }
+.c-hit { fill: transparent; cursor: pointer; }
+.c-line { fill: none; stroke-width: 2; }
+.c-line.base { stroke: var(--muted); stroke-dasharray: 4 3; }
+.c-line.mod { stroke: var(--brand); }
+.c-dot { fill: var(--brand); }
+.c-dot.hollow { fill: var(--surface); stroke: var(--muted); stroke-width: 1.5; }
+.c-ci { stroke: var(--muted); stroke-width: 1.5; }
+.chart-wrap { position: relative; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12.5px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -110%); z-index: 3; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.legend-bar { width: 120px; height: 10px; border-radius: 3px; background: linear-gradient(90deg, var(--seq-0), var(--seq-2), var(--seq-4), var(--seq-6)); display: inline-block; }
+
+/* floor map */
+.buildings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 560px) { .buildings { grid-template-columns: minmax(0, 1fr); } }
+.building { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.building-name { font-family: var(--font-display); font-weight: 600; font-size: 15px; padding-bottom: 4px; border-bottom: 2px solid var(--brand); color: var(--brand); }
+.zone { display: flex; flex-direction: column; gap: 6px; }
+.zone-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.zone-head b { font-family: var(--font-display); font-weight: 600; }
+.zone-head span { color: var(--muted); text-align: right; }
+.tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
+.tile { border: 0; border-radius: 4px; cursor: pointer; padding: 4px 2px; min-height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+.tile .n { font-size: 10px; opacity: .78; font-family: var(--font-data); }
+.tile .v { font-size: 12.5px; font-weight: 600; font-family: var(--font-data); }
+.tile.closed { background: var(--closed); color: var(--muted); }
+.tile[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); position: relative; z-index: 1; }
+
+/* seat detail */
+.seat-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+.seat-id { font-family: var(--font-display); font-size: 38px; font-weight: 700; line-height: 1; }
+select { padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); color: var(--ink-2); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-top: 12px; }
+@media (max-width: 480px) { .stats { grid-template-columns: minmax(0, 1fr); } }
+.stat { background: var(--surface); padding: 9px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat .k { font-size: 12px; color: var(--muted); }
+.stat .v { font-family: var(--font-data); font-weight: 600; font-size: 21px; }
+.stat .v small { font-size: 12.5px; color: var(--ink-2); font-weight: 500; margin-left: 3px; }
+.stat.best .v { color: var(--accent-ink); }
+.section-title { font-size: 13px; color: var(--ink-2); margin: 14px 0 6px; }
+.why { display: flex; flex-direction: column; }
+.why-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 62px; gap: 8px; align-items: center; font-size: 13px; padding: 4px 0; border-top: 1px solid var(--line); }
+.why-row .wb { position: relative; height: 10px; }
+.why-row .wb span { position: absolute; top: 0; height: 10px; border-radius: 2px; }
+.why-row .wv { text-align: right; font-family: var(--font-data); }
+.why-total { display: flex; flex-wrap: wrap; gap: 4px 16px; padding-top: 8px; border-top: 1px solid var(--line-strong); font-size: 13.5px; }
+.why-total b { font-family: var(--font-data); }
+
+/* what-if */
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 14px; }
+.form label.f { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.form input[type=range] { accent-color: var(--brand); width: 100%; }
+.checks { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; }
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+.cmp { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--bg); }
+.cmp .k { font-size: 12px; color: var(--muted); }
+.cmp .v { font-family: var(--font-data); font-weight: 600; font-size: 24px; }
+.cmp.mod { border-color: var(--brand); }
+.delta-up { color: var(--brand); } .delta-down { color: var(--neg); }
+.btn { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 8px; padding: 5px 12px; cursor: pointer; color: var(--ink-2); }
+.btn:hover { border-color: var(--brand); color: var(--brand); }
+
+.notes { font-size: 13px; color: var(--ink-2); display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px 24px; }
+.notes h3 { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+code { font-family: var(--font-data); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <p class="eyebrow">โมเดล A · Binary Logistic Regression · ลักษณะที่นั่ง + ชั่วโมง × ช่วงภาคการศึกษา</p>
+    <h1>แดชบอร์ดที่นั่งหอสมุด</h1>
+    <p class="lede">เลือกช่วงเวลาที่จะไป แล้วดูว่าโซนไหนว่าง ที่นั่งไหนมีลุ้น และทำไมโมเดลถึงทายแบบนั้น ทุกตัวเลขคำนวณสดในหน้านี้จากค่าน้ำหนักของโมเดล ด้วยสูตร p = 1 / (1 + e<sup>−z</sup>)</p>
+  </header>
+
+  <section class="controls" aria-label="ตัวเลือกช่วงเวลา">
+    <div class="ctl"><span class="ctl-label" id="phLbl">ช่วงภาคการศึกษา</span><div class="seg" role="radiogroup" aria-labelledby="phLbl" id="ph"></div></div>
+    <div class="ctl"><span class="ctl-label" id="dyLbl">วัน</span><div class="seg" role="radiogroup" aria-labelledby="dyLbl" id="dy"></div></div>
+    <div class="ctl"><label class="ctl-label" for="hour">เวลาที่จะไป</label><div class="hour-row"><input type="range" id="hour" min="0" max="23" step="1" value="19"><output id="hourOut" for="hour">19:00</output></div></div>
+    <div class="ctl"><span class="ctl-label">วันพิเศษ</span><label class="check"><input type="checkbox" id="hol"> วันหยุดนักขัตฤกษ์</label></div>
+  </section>
+
+  <section class="kpis" aria-label="ภาพรวม">
+    <div class="kpi"><span class="k" id="k1k">ที่นั่งที่คาดว่าว่าง ตอน 19:00</span><span class="v" id="k1v">–</span><span class="d" id="k1d"></span></div>
+    <div class="kpi"><span class="k">โซนที่ว่างที่สุด ณ เวลานี้</span><span class="v" id="k2v">–</span><span class="d" id="k2d"></span></div>
+    <div class="kpi"><span class="k">ชั่วโมงที่ว่างที่สุดของวันแบบนี้</span><span class="v" id="k3v">–</span><span class="d" id="k3d"></span></div>
+    <div class="kpi"><span class="k">ความแม่นของโมเดล A (ชุดทดสอบ 30%)</span><span class="v" id="k4v">–</span><span class="d" id="k4d"></span></div>
+  </section>
+
+  <div class="row r1">
+    <section class="panel">
+      <div class="panel-head"><h2>อันดับโซน</h2><p class="sub" id="zonesSub"></p></div>
+      <ol class="zones" id="zones"></ol>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>ที่นั่งที่คาดว่าว่างทั้งหอสมุด รายชั่วโมง</h2><p class="sub">แตะแท่งเพื่อเปลี่ยนเวลา</p></div>
+      <div class="chart-wrap" id="hourWrap"><svg class="chart" id="hourChart" viewBox="0 0 640 240" role="img" aria-label="จำนวนที่นั่งที่คาดว่าว่างรายชั่วโมง"></svg><div class="tip" id="hourTip" hidden></div></div>
+      <div class="legend" style="margin-top:6px"><span><i style="background:var(--bar)"></i>คาดว่าว่าง (ที่นั่ง)</span><span><i style="background:var(--accent)"></i>ชั่วโมงที่ว่างที่สุด</span><span><i style="background:var(--closed)"></i>ปิด</span></div>
+    </section>
+  </div>
+
+  <div class="row r2">
+    <section class="panel">
+      <div class="panel-head"><div><h2>แผนผังที่นั่ง</h2><p class="sub" id="mapSub"></p></div><div class="legend"><span>0%</span><span class="legend-bar"></span><span>100%</span><span><i style="background:var(--closed)"></i>ปิด</span></div></div>
+      <div class="buildings" id="buildings"></div>
+    </section>
+    <section class="panel" aria-live="polite">
+      <div class="seat-row">
+        <div><p class="sub">ที่นั่งที่เลือก</p><div class="seat-id" id="sId">A-01</div></div>
+        <div class="ctl"><label class="ctl-label" for="seatSel">เปลี่ยนที่นั่ง</label><select id="seatSel"></select></div>
+      </div>
+      <div class="chips" id="sChips"></div>
+      <div class="stats">
+        <div class="stat"><span class="k" id="sNowK">โอกาสว่างตอน 19:00</span><span class="v" id="sNow">–</span></div>
+        <div class="stat best"><span class="k">เวลาที่ดีที่สุด</span><span class="v" id="sBest">–</span></div>
+        <div class="stat"><span class="k">โมเดลทายเฉลี่ย / ของจริง</span><span class="v" id="sCal" style="font-size:17px">–</span></div>
+      </div>
+      <p class="section-title" id="sChartT">โอกาสว่างรายชั่วโมง</p>
+      <div class="chart-wrap" id="seatWrap"><svg class="chart" id="seatChart" viewBox="0 0 640 200" role="img" aria-label="โอกาสว่างของที่นั่งรายชั่วโมง"></svg><div class="tip" id="seatTip" hidden></div></div>
+      <p class="section-title" id="whyT">ทำไมโมเดลทายแบบนี้</p>
+      <div class="legend" style="margin-bottom:4px"><span><i style="background:var(--bar)"></i>ทำให้ว่างง่ายขึ้น</span><span><i style="background:var(--neg)"></i>ทำให้ว่างยากขึ้น</span></div>
+      <div class="why" id="why"></div>
+    </section>
+  </div>
+
+  <div class="row r3">
+    <section class="panel">
+      <div class="panel-head"><div><h2>ลองออกแบบที่นั่ง</h2><p class="sub">เริ่มจากที่นั่งที่เลือก แล้วเปลี่ยนลักษณะดูว่าโอกาสว่างจะเปลี่ยนไปเท่าไร</p></div><button type="button" class="btn" id="wReset">รีเซ็ตเป็นที่นั่งเดิม</button></div>
+      <div class="form">
+        <label class="f" for="wRoom">ประเภทห้อง<select id="wRoom"></select></label>
+        <label class="f" for="wSetup">รูปแบบที่นั่ง<select id="wSetup"></select></label>
+        <label class="f" for="wView">มุมมองภายนอก<select id="wView"></select></label>
+        <label class="f" for="wEnt">ระยะถึงทางเข้า <span id="wEntV" class="num"></span><input type="range" id="wEnt" min="3" max="45" step="0.5"></label>
+        <label class="f" for="wRest">ระยะถึงห้องน้ำ <span id="wRestV" class="num"></span><input type="range" id="wRest" min="5" max="60" step="0.5"></label>
+        <label class="f" for="wOpen">ความโล่งของมุมมอง <span id="wOpenV" class="num"></span><input type="range" id="wOpen" min="0" max="8" step="1"></label>
+      </div>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="wPlug"> มีปลั๊กไฟ</label>
+        <label class="check"><input type="checkbox" id="wWide"> โต๊ะกว้าง</label>
+        <label class="check"><input type="checkbox" id="wPc"> มีคอมพิวเตอร์</label>
+        <label class="check"><input type="checkbox" id="wAc"> ใกล้ช่องลมแอร์</label>
+        <label class="check"><input type="checkbox" id="wB2"> อยู่อาคาร 2</label>
+      </div>
+      <div class="compare">
+        <div class="cmp"><span class="k" id="wBaseK">ที่นั่งเดิม</span><div class="v" id="wBase">–</div></div>
+        <div class="cmp mod"><span class="k">ที่นั่งที่ออกแบบ</span><div class="v" id="wMod">–</div></div>
+        <div class="cmp"><span class="k">ต่างกัน</span><div class="v" id="wDelta">–</div></div>
+      </div>
+      <p class="section-title">เทียบทั้งวัน</p>
+      <svg class="chart" id="wChart" viewBox="0 0 640 190" role="img" aria-label="เทียบโอกาสว่างของที่นั่งเดิมกับที่นั่งที่ออกแบบรายชั่วโมง"></svg>
+      <div class="legend"><span><i style="background:var(--muted)"></i>ที่นั่งเดิม (เส้นประ)</span><span><i style="background:var(--brand)"></i>ที่นั่งที่ออกแบบ</span></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>ลักษณะไหนทำให้ว่างง่าย หรือว่างยาก</h2><p class="sub">Odds ratio ของการ "ว่าง" จากโมเดล A พร้อมช่วงความเชื่อมั่น 95%</p></div></div>
+      <svg class="chart" id="orChart" viewBox="0 0 640 560" role="img" aria-label="กราฟ odds ratio ของลักษณะที่นั่ง"></svg>
+      <div class="legend"><span><i style="background:var(--brand);border-radius:50%"></i>มีนัยสำคัญ (p &lt; 0.05)</span><span><i style="background:var(--surface);border:1.5px solid var(--muted);border-radius:50%"></i>ไม่มีนัยสำคัญ</span></div>
+    </section>
+  </div>
+
+  <footer class="notes">
+    <div><h3>"ว่าง" หมายถึงอะไร</h3><p>ไม่มีคนนั่ง และไม่มีของวางจองไว้ ช่วงเรียนปกติเปิด จันทร์–ศุกร์ 08:00–21:59 และเสาร์–อาทิตย์ 10:00–18:59 ส่วนช่วงอ่านหนังสือและช่วงสอบเปิด 24 ชั่วโมง ยกเว้นโซน F ปิด</p></div>
+    <div><h3>โมเดล A</h3><p><code>ว่าง ~ ช่วงภาคการศึกษา × ชั่วโมง + ลักษณะที่นั่ง + เสาร์-อาทิตย์ + วันหยุด</code> ฝึกด้วย train 70% แล้วทดสอบกับ test 30% (แบ่งเป็นวัน) จากนั้นฝึกใหม่ด้วยข้อมูลทั้งหมดเพื่อใช้ในแดชบอร์ดนี้</p></div>
+    <div><h3>"คาดว่าว่าง X ที่" คิดยังไง</h3><p>บวกโอกาสว่างของทุกที่นั่งที่เปิดเข้าด้วยกัน เช่น 4 ที่นั่ง ที่นั่งละ 50% คาดว่าว่าง 2 ที่</p></div>
+    <div><h3>ข้อควรระวัง</h3><p>เป็นข้อมูลจำลอง และช่วง 18:00–05:59 ถูกปรับให้มีคนใช้มากขึ้น โมเดล A ทายจากลักษณะที่นั่ง จึงอาจคลาดกับที่นั่งที่มี "นิสัยเฉพาะ" ดูค่า "โมเดลทายเฉลี่ย / ของจริง" ประกอบ</p></div>
+  </footer>
+</div>
+
+<script type="application/json" id="model-data">{"params":{"const":1.927975,"Phase x Hour: Exam Period 00":-2.669932,"Phase x Hour: Exam Period 01":-2.623686,"Phase x Hour: Exam Period 02":-2.437877,"Phase x Hour: Exam Period 03":-2.49401,"Phase x Hour: Exam Period 04":-2.473462,"Phase x Hour: Exam Period 05":-2.393108,"Phase x Hour: Exam Period 06":-0.579514,"Phase x Hour: Exam Period 07":-0.51492,"Phase x Hour: Exam Period 08":-1.549566,"Phase x Hour: Exam Period 09":-1.903255,"Phase x Hour: Exam Period 10":-2.133007,"Phase x Hour: Exam Period 11":-2.596462,"Phase x Hour: Exam Period 12":-2.09563,"Phase x Hour: Exam Period 13":-2.242939,"Phase x Hour: Exam Period 14":-2.638973,"Phase x Hour: Exam Period 15":-2.768088,"Phase x Hour: Exam Period 16":-2.664213,"Phase x Hour: Exam Period 17":-2.718559,"Phase x Hour: Exam Period 18":-3.866568,"Phase x Hour: Exam Period 19":-3.808773,"Phase x Hour: Exam Period 20":-3.625029,"Phase x Hour: Exam Period 21":-3.657263,"Phase x Hour: Exam Period 22":-3.211807,"Phase x Hour: Exam Period 23":-2.987341,"Phase x Hour: Reading Week 00":-1.929403,"Phase x Hour: Reading Week 01":-2.159283,"Phase x Hour: Reading Week 02":-1.723447,"Phase x Hour: Reading Week 03":-1.7018,"Phase x Hour: Reading Week 04":-1.722334,"Phase x Hour: Reading Week 05":-1.78133,"Phase x Hour: Reading Week 06":-0.204177,"Phase x Hour: Reading Week 07":0.05899,"Phase x Hour: Reading Week 08":-1.022026,"Phase x Hour: Reading Week 09":-1.358707,"Phase x Hour: Reading Week 10":-1.635398,"Phase x Hour: Reading Week 11":-1.912114,"Phase x Hour: Reading Week 12":-1.678011,"Phase x Hour: Reading Week 13":-1.481905,"Phase x Hour: Reading Week 14":-2.145056,"Phase x Hour: Reading Week 15":-2.108975,"Phase x Hour: Reading Week 16":-2.055941,"Phase x Hour: Reading Week 17":-2.136505,"Phase x Hour: Reading Week 18":-2.845359,"Phase x Hour: Reading Week 19":-2.741974,"Phase x Hour: Reading Week 20":-2.863293,"Phase x Hour: Reading Week 21":-2.811216,"Phase x Hour: Reading Week 22":-2.326607,"Phase x Hour: Reading Week 23":-2.286474,"Phase x Hour: Regular Classes 09":-0.424616,"Phase x Hour: Regular Classes 10":-0.58744,"Phase x Hour: Regular Classes 11":-0.773456,"Phase x Hour: Regular Classes 12":-0.692801,"Phase x Hour: Regular Classes 13":-0.789764,"Phase x Hour: Regular Classes 14":-0.983816,"Phase x Hour: Regular Classes 15":-0.969216,"Phase x Hour: Regular Classes 16":-1.075682,"Phase x Hour: Regular Classes 17":-0.898152,"Phase x Hour: Regular Classes 18":-1.105369,"Phase x Hour: Regular Classes 19":-1.04311,"Phase x Hour: Regular Classes 20":-1.298455,"Phase x Hour: Regular Classes 21":-1.160836,"Room Type: 24-Hour Zone":0.038963,"Room Type: Group Study Area":-0.139398,"Room Type: Quiet Reading Room":-0.006695,"Seat Setup: Individual, Front-High Partition":-0.620469,"Seat Setup: Individual, Front-Low Partition":-0.32256,"Seat Setup: Individual, No Partition":-0.031868,"Seat Setup: Individual, Surround-High Partition":-0.898936,"Seat Setup: Shared Table, Front-High Partition":-0.576791,"Seat Setup: Shared Table, Front-Low Partition":-0.343393,"Seat Setup: Sofa/Soft Seating":-0.022229,"Outside View: Building View":-0.161635,"Outside View: Full Outside View":-0.125987,"Outside View: Partial Outside View":-0.213057,"Building 2":0.2256,"Wide Desk":-0.004007,"Has Power Outlet":-0.405381,"Has Desktop Computer":0.010503,"Near AC Vent":0.133898,"Is Weekend":0.640623,"Public Holiday":0.368669,"Distance to Entrance (per 10 m)":-0.043222,"Distance to Restroom (per 10 m)":-0.036224,"View Openness Score":0.013323},"odds_ratio":{"Is Weekend":{"or":1.8977,"lo":1.8066,"hi":1.9933,"p":0.0},"Public Holiday":{"or":1.4458,"lo":1.3693,"hi":1.5266,"p":0.0},"Building 2":{"or":1.2531,"lo":1.0678,"hi":1.4705,"p":0.005713},"Near AC Vent":{"or":1.1433,"lo":1.0098,"hi":1.2943,"p":0.034461},"Room Type: 24-Hour Zone":{"or":1.0397,"lo":0.8512,"hi":1.2701,"p":0.702768},"View Openness Score":{"or":1.0134,"lo":0.9797,"hi":1.0483,"p":0.440434},"Has Desktop Computer":{"or":1.0106,"lo":0.8572,"hi":1.1913,"p":0.900452},"Wide Desk":{"or":0.996,"lo":0.874,"hi":1.1351,"p":0.952082},"Room Type: Quiet Reading Room":{"or":0.9933,"lo":0.841,"hi":1.1732,"p":0.937172},"Seat Setup: Sofa/Soft Seating":{"or":0.978,"lo":0.7495,"hi":1.2762,"p":0.869968},"Seat Setup: Individual, No Partition":{"or":0.9686,"lo":0.7803,"hi":1.2024,"p":0.772665},"Distance to Restroom (per 10 m)":{"or":0.9644,"lo":0.9298,"hi":1.0004,"p":0.052359},"Distance to Entrance (per 10 m)":{"or":0.9577,"lo":0.9102,"hi":1.0077,"p":0.096075},"Outside View: Full Outside View":{"or":0.8816,"lo":0.6982,"hi":1.1132,"p":0.289642},"Room Type: Group Study Area":{"or":0.8699,"lo":0.6573,"hi":1.1513,"p":0.329619},"Outside View: Building View":{"or":0.8508,"lo":0.6645,"hi":1.0892,"p":0.199708},"Outside View: Partial Outside View":{"or":0.8081,"lo":0.676,"hi":0.9661,"p":0.019352},"Seat Setup: Individual, Front-Low Partition":{"or":0.7243,"lo":0.5742,"hi":0.9137,"p":0.00649},"Seat Setup: Shared Table, Front-Low Partition":{"or":0.7094,"lo":0.5747,"hi":0.8756,"p":0.001392},"Has Power Outlet":{"or":0.6667,"lo":0.5753,"hi":0.7726,"p":0.0},"Seat Setup: Shared Table, Front-High Partition":{"or":0.5617,"lo":0.4298,"hi":0.7341,"p":2.4e-05},"Seat Setup: Individual, Front-High Partition":{"or":0.5377,"lo":0.4126,"hi":0.7007,"p":4e-06},"Seat Setup: Individual, Surround-High Partition":{"or":0.407,"lo":0.3147,"hi":0.5264,"p":0.0}},"seats":{"A-01":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":15.5,"Distance to Restroom (m)":58.2,"View Openness Score":8,"open_late_term":true,"actual_free_rate":0.4139,"pred_mean_A":0.3203},"A-02":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":30.9,"Distance to Restroom (m)":5.7,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.3705,"pred_mean_A":0.311},"A-03":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":42.8,"Distance to Restroom (m)":36.0,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.5045,"pred_mean_A":0.3018},"A-04":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":33.7,"Distance to Restroom (m)":35.2,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.1812,"pred_mean_A":0.2672},"A-05":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":16.7,"Distance to Restroom (m)":32.5,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.2768,"pred_mean_A":0.2477},"A-06":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"Building View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":9.7,"Distance to Restroom (m)":57.1,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.1659,"pred_mean_A":0.2571},"A-07":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":40.4,"Distance to Restroom (m)":55.5,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.2009,"pred_mean_A":0.2211},"A-08":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":28.9,"Distance to Restroom (m)":27.2,"View Openness Score":6,"open_late_term":true,"actual_free_rate":0.2394,"pred_mean_A":0.327},"A-09":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":44.1,"Distance to Restroom (m)":55.9,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.1007,"pred_mean_A":0.2175},"A-10":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"Partial Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":5.0,"Distance to Restroom (m)":51.1,"View Openness Score":8,"open_late_term":true,"actual_free_rate":0.1696,"pred_mean_A":0.2285},"A-11":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":1,"Distance to Entrance (m)":40.5,"Distance to Restroom (m)":44.9,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.4263,"pred_mean_A":0.4161},"A-12":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"Building View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":30.4,"Distance to Restroom (m)":47.2,"View Openness Score":7,"open_late_term":true,"actual_free_rate":0.4112,"pred_mean_A":0.2846},"A-13":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":44.0,"Distance to Restroom (m)":15.7,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.3937,"pred_mean_A":0.4838},"A-14":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-Low Partition","Outside View":"Full Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":43.1,"Distance to Restroom (m)":17.8,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.3596,"pred_mean_A":0.3478},"A-15":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":11.9,"Distance to Restroom (m)":9.5,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.2551,"pred_mean_A":0.316},"A-16":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":24.6,"Distance to Restroom (m)":54.4,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.2388,"pred_mean_A":0.2341},"A-17":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":10.1,"Distance to Restroom (m)":50.6,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.426,"pred_mean_A":0.4227},"A-18":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":44.4,"Distance to Restroom (m)":19.3,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.2774,"pred_mean_A":0.2619},"A-19":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-Low Partition","Outside View":"Partial Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":4.2,"Distance to Restroom (m)":21.8,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3669,"pred_mean_A":0.3647},"A-20":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":14.2,"Distance to Restroom (m)":57.8,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3184,"pred_mean_A":0.3151},"A-21":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":10.1,"Distance to Restroom (m)":42.9,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.4072,"pred_mean_A":0.3974},"A-22":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":5.1,"Distance to Restroom (m)":25.3,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.2746,"pred_mean_A":0.2706},"A-23":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":23.5,"Distance to Restroom (m)":48.5,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.2432,"pred_mean_A":0.3058},"A-24":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":22.8,"Distance to Restroom (m)":18.5,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.4054,"pred_mean_A":0.3579},"A-25":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":9.3,"Distance to Restroom (m)":18.6,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4472,"pred_mean_A":0.4039},"A-26":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, No Partition","Outside View":"Building View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":5.5,"Distance to Restroom (m)":15.8,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4462,"pred_mean_A":0.4083},"A-27":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":1,"Distance to Entrance (m)":26.9,"Distance to Restroom (m)":7.1,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.3034,"pred_mean_A":0.2886},"A-28":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":27.1,"Distance to Restroom (m)":49.9,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.4596,"pred_mean_A":0.4761},"A-29":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-Low Partition","Outside View":"Partial Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":44.9,"Distance to Restroom (m)":10.7,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.4263,"pred_mean_A":0.3122},"A-30":{"Building":1,"Floor":3,"Zone":"A","Room Type":"Quiet Reading Room","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":18.1,"Distance to Restroom (m)":8.4,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.5268,"pred_mean_A":0.5365},"B-01":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":27.1,"Distance to Restroom (m)":58.7,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.5145,"pred_mean_A":0.4729},"B-02":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":35.6,"Distance to Restroom (m)":57.0,"View Openness Score":8,"open_late_term":true,"actual_free_rate":0.2433,"pred_mean_A":0.3383},"B-03":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":29.1,"Distance to Restroom (m)":45.7,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.3557,"pred_mean_A":0.4175},"B-04":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":39.8,"Distance to Restroom (m)":34.8,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.3221,"pred_mean_A":0.3845},"B-05":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":7.9,"Distance to Restroom (m)":43.4,"View Openness Score":7,"open_late_term":true,"actual_free_rate":0.5,"pred_mean_A":0.4599},"B-06":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":7.7,"Distance to Restroom (m)":12.0,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.5145,"pred_mean_A":0.5321},"B-07":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"Full Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":24.5,"Distance to Restroom (m)":53.7,"View Openness Score":7,"open_late_term":true,"actual_free_rate":0.2292,"pred_mean_A":0.3204},"B-08":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"Partial Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":40.5,"Distance to Restroom (m)":49.9,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.264,"pred_mean_A":0.2444},"B-09":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":9.2,"Distance to Restroom (m)":40.7,"View Openness Score":6,"open_late_term":true,"actual_free_rate":0.5314,"pred_mean_A":0.3962},"B-10":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"Partial Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":15.0,"Distance to Restroom (m)":33.4,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3034,"pred_mean_A":0.3229},"B-11":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":27.4,"Distance to Restroom (m)":27.2,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.3139,"pred_mean_A":0.3442},"B-12":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, No Partition","Outside View":"Building View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":20.4,"Distance to Restroom (m)":22.2,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.3649,"pred_mean_A":0.3977},"B-13":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":31.0,"Distance to Restroom (m)":11.4,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4449,"pred_mean_A":0.4254},"B-14":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"Partial Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":14.5,"Distance to Restroom (m)":44.0,"View Openness Score":8,"open_late_term":true,"actual_free_rate":0.2237,"pred_mean_A":0.2795},"B-15":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":3.6,"Distance to Restroom (m)":49.3,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.4966,"pred_mean_A":0.5361},"B-16":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":27.9,"Distance to Restroom (m)":22.6,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.3483,"pred_mean_A":0.4102},"B-17":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"Partial Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":29.4,"Distance to Restroom (m)":18.1,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3072,"pred_mean_A":0.3206},"B-18":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-High Partition","Outside View":"Building View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":15.3,"Distance to Restroom (m)":39.9,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.1946,"pred_mean_A":0.2752},"B-19":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":1,"Distance to Entrance (m)":27.9,"Distance to Restroom (m)":12.7,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4643,"pred_mean_A":0.3969},"B-20":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":37.4,"Distance to Restroom (m)":47.3,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.5022,"pred_mean_A":0.3838},"B-21":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":26.6,"Distance to Restroom (m)":51.6,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.222,"pred_mean_A":0.2836},"B-22":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":22.2,"Distance to Restroom (m)":22.1,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.4206,"pred_mean_A":0.3135},"B-23":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":41.4,"Distance to Restroom (m)":59.9,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.2063,"pred_mean_A":0.2195},"B-24":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":17.2,"Distance to Restroom (m)":52.5,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4362,"pred_mean_A":0.4129},"B-25":{"Building":1,"Floor":2,"Zone":"B","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-Low Partition","Outside View":"Full Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":18.7,"Distance to Restroom (m)":17.1,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.3722,"pred_mean_A":0.3425},"C-01":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":27.6,"Distance to Restroom (m)":24.4,"View Openness Score":6,"open_late_term":true,"actual_free_rate":0.3826,"pred_mean_A":0.3966},"C-02":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"Full Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":33.4,"Distance to Restroom (m)":37.7,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4067,"pred_mean_A":0.424},"C-03":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"Building View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":38.4,"Distance to Restroom (m)":38.1,"View Openness Score":7,"open_late_term":true,"actual_free_rate":0.3795,"pred_mean_A":0.3909},"C-04":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":44.0,"Distance to Restroom (m)":42.1,"View Openness Score":6,"open_late_term":true,"actual_free_rate":0.4407,"pred_mean_A":0.4169},"C-05":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":1,"Distance to Entrance (m)":32.8,"Distance to Restroom (m)":42.3,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.5101,"pred_mean_A":0.4347},"C-06":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":44.2,"Distance to Restroom (m)":16.5,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.5135,"pred_mean_A":0.4217},"C-07":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":24.4,"Distance to Restroom (m)":54.9,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.4743,"pred_mean_A":0.4932},"C-08":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":41.3,"Distance to Restroom (m)":5.5,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3906,"pred_mean_A":0.4386},"C-09":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Shared Table, No Partition","Outside View":"Full Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":27.7,"Distance to Restroom (m)":59.7,"View Openness Score":8,"open_late_term":true,"actual_free_rate":0.4206,"pred_mean_A":0.398},"C-10":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":16.7,"Distance to Restroom (m)":22.0,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.2152,"pred_mean_A":0.3304},"C-11":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":27.0,"Distance to Restroom (m)":43.0,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.4315,"pred_mean_A":0.3577},"C-12":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":14.0,"Distance to Restroom (m)":54.3,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.4865,"pred_mean_A":0.4918},"C-13":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"Building View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":28.6,"Distance to Restroom (m)":17.6,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.375,"pred_mean_A":0.408},"C-14":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":24.5,"Distance to Restroom (m)":48.8,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.3969,"pred_mean_A":0.5243},"C-15":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Shared Table, No Partition","Outside View":"Building View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":42.2,"Distance to Restroom (m)":51.0,"View Openness Score":8,"open_late_term":true,"actual_free_rate":0.4653,"pred_mean_A":0.3857},"C-16":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"Full Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":34.6,"Distance to Restroom (m)":6.7,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4763,"pred_mean_A":0.5011},"C-17":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":5.5,"Distance to Restroom (m)":51.7,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.565,"pred_mean_A":0.5026},"C-18":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":35.6,"Distance to Restroom (m)":25.2,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.6264,"pred_mean_A":0.541},"C-19":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Shared Table, No Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":9.0,"Distance to Restroom (m)":46.3,"View Openness Score":8,"open_late_term":true,"actual_free_rate":0.433,"pred_mean_A":0.4343},"C-20":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":30.0,"Distance to Restroom (m)":58.3,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3753,"pred_mean_A":0.4151},"C-21":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":5.7,"Distance to Restroom (m)":8.1,"View Openness Score":7,"open_late_term":true,"actual_free_rate":0.5625,"pred_mean_A":0.5137},"C-22":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":34.0,"Distance to Restroom (m)":43.7,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.4385,"pred_mean_A":0.429},"C-23":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":21.7,"Distance to Restroom (m)":31.1,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.4427,"pred_mean_A":0.4259},"C-24":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Sofa/Soft Seating","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":42.5,"Distance to Restroom (m)":12.3,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3177,"pred_mean_A":0.4339},"C-25":{"Building":2,"Floor":2,"Zone":"C","Room Type":"Group Study Area","Seat Setup":"Shared Table, Front-High Partition","Outside View":"Full Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":29.9,"Distance to Restroom (m)":53.0,"View Openness Score":6,"open_late_term":true,"actual_free_rate":0.3714,"pred_mean_A":0.3889},"D-01":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":4.3,"Distance to Restroom (m)":32.8,"View Openness Score":7,"open_late_term":true,"actual_free_rate":0.2461,"pred_mean_A":0.3886},"D-02":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":28.7,"Distance to Restroom (m)":34.0,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.455,"pred_mean_A":0.4351},"D-03":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"Partial Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":29.2,"Distance to Restroom (m)":33.6,"View Openness Score":7,"open_late_term":true,"actual_free_rate":0.3924,"pred_mean_A":0.4241},"D-04":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":40.0,"Distance to Restroom (m)":46.5,"View Openness Score":8,"open_late_term":true,"actual_free_rate":0.3251,"pred_mean_A":0.4126},"D-05":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":4.0,"Distance to Restroom (m)":29.7,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.4641,"pred_mean_A":0.4403},"D-06":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":22.6,"Distance to Restroom (m)":39.7,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.2135,"pred_mean_A":0.2538},"D-07":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":42.5,"Distance to Restroom (m)":20.0,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.3446,"pred_mean_A":0.4199},"D-08":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":32.1,"Distance to Restroom (m)":31.7,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.4318,"pred_mean_A":0.3407},"D-09":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, Front-High Partition","Outside View":"Building View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":7.1,"Distance to Restroom (m)":19.1,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.3951,"pred_mean_A":0.3071},"D-10":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":31.4,"Distance to Restroom (m)":41.2,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.3063,"pred_mean_A":0.3601},"D-11":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":24.5,"Distance to Restroom (m)":30.8,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3924,"pred_mean_A":0.4473},"D-12":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"Building View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":40.0,"Distance to Restroom (m)":37.8,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.2908,"pred_mean_A":0.3166},"D-13":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":12.2,"Distance to Restroom (m)":23.6,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.3784,"pred_mean_A":0.3753},"D-14":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":7.8,"Distance to Restroom (m)":59.4,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.3258,"pred_mean_A":0.3464},"D-15":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, Front-High Partition","Outside View":"Building View","Building 2":0,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":32.3,"Distance to Restroom (m)":19.0,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.4552,"pred_mean_A":0.3779},"D-16":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":23.1,"Distance to Restroom (m)":34.8,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.5045,"pred_mean_A":0.4441},"D-17":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":39.6,"Distance to Restroom (m)":33.5,"View Openness Score":1,"open_late_term":true,"actual_free_rate":0.3498,"pred_mean_A":0.294},"D-18":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":4.7,"Distance to Restroom (m)":31.2,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4921,"pred_mean_A":0.5273},"D-19":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":35.4,"Distance to Restroom (m)":51.1,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.4866,"pred_mean_A":0.3999},"D-20":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":3.9,"Distance to Restroom (m)":14.4,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.2144,"pred_mean_A":0.3301},"D-21":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":17.2,"Distance to Restroom (m)":20.1,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.5685,"pred_mean_A":0.4389},"D-22":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":1,"Distance to Entrance (m)":25.4,"Distance to Restroom (m)":47.2,"View Openness Score":2,"open_late_term":true,"actual_free_rate":0.3677,"pred_mean_A":0.431},"D-23":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, Front-High Partition","Outside View":"Full Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":7.9,"Distance to Restroom (m)":58.4,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.3884,"pred_mean_A":0.2778},"D-24":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":7.1,"Distance to Restroom (m)":17.1,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.4397,"pred_mean_A":0.4809},"D-25":{"Building":1,"Floor":1,"Zone":"D","Room Type":"24-Hour Zone","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":0,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":1,"Distance to Entrance (m)":5.4,"Distance to Restroom (m)":43.2,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3826,"pred_mean_A":0.3434},"E-01":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"Full Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":6.0,"Distance to Restroom (m)":35.1,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.409,"pred_mean_A":0.3426},"E-02":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":21.8,"Distance to Restroom (m)":42.4,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4519,"pred_mean_A":0.4827},"E-03":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":25.5,"Distance to Restroom (m)":32.5,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.417,"pred_mean_A":0.4565},"E-04":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":21.3,"Distance to Restroom (m)":34.6,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.4888,"pred_mean_A":0.4227},"E-05":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"Building View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":44.1,"Distance to Restroom (m)":30.5,"View Openness Score":6,"open_late_term":true,"actual_free_rate":0.343,"pred_mean_A":0.4415},"E-06":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":8.4,"Distance to Restroom (m)":17.1,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.482,"pred_mean_A":0.4198},"E-07":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":6.3,"Distance to Restroom (m)":25.4,"View Openness Score":0,"open_late_term":true,"actual_free_rate":0.5673,"pred_mean_A":0.5865},"E-08":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-Low Partition","Outside View":"Building View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":21.0,"Distance to Restroom (m)":55.6,"View Openness Score":6,"open_late_term":true,"actual_free_rate":0.3221,"pred_mean_A":0.4397},"E-09":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":37.4,"Distance to Restroom (m)":7.1,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.3049,"pred_mean_A":0.2979},"E-10":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":37.7,"Distance to Restroom (m)":55.3,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4308,"pred_mean_A":0.3692},"E-11":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-Low Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":3.7,"Distance to Restroom (m)":42.3,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4787,"pred_mean_A":0.3954},"E-12":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":36.9,"Distance to Restroom (m)":54.9,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.4855,"pred_mean_A":0.4698},"E-13":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"Full Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":11.3,"Distance to Restroom (m)":46.5,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.236,"pred_mean_A":0.3284},"E-14":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":27.5,"Distance to Restroom (m)":43.0,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.4292,"pred_mean_A":0.3411},"E-15":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"Building View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":22.3,"Distance to Restroom (m)":53.7,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.5124,"pred_mean_A":0.4115},"E-16":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":36.8,"Distance to Restroom (m)":28.5,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.5101,"pred_mean_A":0.4761},"E-17":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":9.0,"Distance to Restroom (m)":23.5,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.481,"pred_mean_A":0.5153},"E-18":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":42.1,"Distance to Restroom (m)":38.1,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.527,"pred_mean_A":0.521},"E-19":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":42.8,"Distance to Restroom (m)":25.6,"View Openness Score":5,"open_late_term":true,"actual_free_rate":0.3722,"pred_mean_A":0.4495},"E-20":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-High Partition","Outside View":"Building View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":14.3,"Distance to Restroom (m)":44.5,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.3661,"pred_mean_A":0.309},"E-21":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":13.2,"Distance to Restroom (m)":45.3,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.5067,"pred_mean_A":0.4576},"E-22":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":17.0,"Distance to Restroom (m)":35.7,"View Openness Score":8,"open_late_term":true,"actual_free_rate":0.3789,"pred_mean_A":0.448},"E-23":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, No Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":21.9,"Distance to Restroom (m)":15.1,"View Openness Score":3,"open_late_term":true,"actual_free_rate":0.5156,"pred_mean_A":0.4765},"E-24":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":12.4,"Distance to Restroom (m)":42.0,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.4206,"pred_mean_A":0.4324},"E-25":{"Building":2,"Floor":1,"Zone":"E","Room Type":"Main Reading Hall","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":27.2,"Distance to Restroom (m)":15.5,"View Openness Score":4,"open_late_term":true,"actual_free_rate":0.396,"pred_mean_A":0.4076},"F-01":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Shared Table, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":17.9,"Distance to Restroom (m)":21.8,"View Openness Score":3,"open_late_term":false,"actual_free_rate":0.4318,"pred_mean_A":0.5774},"F-02":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-Low Partition","Outside View":"Full Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":41.8,"Distance to Restroom (m)":46.1,"View Openness Score":5,"open_late_term":false,"actual_free_rate":0.5977,"pred_mean_A":0.5705},"F-03":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, No Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":1,"Distance to Entrance (m)":40.7,"Distance to Restroom (m)":43.5,"View Openness Score":5,"open_late_term":false,"actual_free_rate":0.6932,"pred_mean_A":0.6528},"F-04":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":24.5,"Distance to Restroom (m)":14.0,"View Openness Score":3,"open_late_term":false,"actual_free_rate":0.6818,"pred_mean_A":0.5695},"F-05":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":25.4,"Distance to Restroom (m)":7.9,"View Openness Score":5,"open_late_term":false,"actual_free_rate":0.4483,"pred_mean_A":0.5414},"F-06":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":18.1,"Distance to Restroom (m)":17.9,"View Openness Score":5,"open_late_term":false,"actual_free_rate":0.4368,"pred_mean_A":0.5441},"F-07":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":21.3,"Distance to Restroom (m)":59.4,"View Openness Score":0,"open_late_term":false,"actual_free_rate":0.7586,"pred_mean_A":0.6197},"F-08":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":0,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":9.6,"Distance to Restroom (m)":24.9,"View Openness Score":3,"open_late_term":false,"actual_free_rate":0.6136,"pred_mean_A":0.6788},"F-09":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-Low Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":20.0,"Distance to Restroom (m)":59.1,"View Openness Score":2,"open_late_term":false,"actual_free_rate":0.7159,"pred_mean_A":0.6316},"F-10":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":39.4,"Distance to Restroom (m)":10.9,"View Openness Score":6,"open_late_term":false,"actual_free_rate":0.4828,"pred_mean_A":0.5797},"F-11":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":0,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":12.6,"Distance to Restroom (m)":56.6,"View Openness Score":5,"open_late_term":false,"actual_free_rate":0.6023,"pred_mean_A":0.5498},"F-12":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Shared Table, Front-Low Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":44.9,"Distance to Restroom (m)":12.2,"View Openness Score":6,"open_late_term":false,"actual_free_rate":0.6818,"pred_mean_A":0.5723},"F-13":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":22.0,"Distance to Restroom (m)":7.4,"View Openness Score":3,"open_late_term":false,"actual_free_rate":0.4302,"pred_mean_A":0.574},"F-14":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":26.7,"Distance to Restroom (m)":57.8,"View Openness Score":5,"open_late_term":false,"actual_free_rate":0.5795,"pred_mean_A":0.4984},"F-15":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-Low Partition","Outside View":"Partial Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":7.6,"Distance to Restroom (m)":43.4,"View Openness Score":4,"open_late_term":false,"actual_free_rate":0.375,"pred_mean_A":0.5823},"F-16":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":43.1,"Distance to Restroom (m)":44.3,"View Openness Score":2,"open_late_term":false,"actual_free_rate":0.4432,"pred_mean_A":0.5505},"F-17":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":37.3,"Distance to Restroom (m)":13.6,"View Openness Score":5,"open_late_term":false,"actual_free_rate":0.5341,"pred_mean_A":0.5921},"F-18":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"Full Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":1,"Distance to Entrance (m)":43.6,"Distance to Restroom (m)":35.5,"View Openness Score":3,"open_late_term":false,"actual_free_rate":0.4432,"pred_mean_A":0.4636},"F-19":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Front-High Partition","Outside View":"No Outside View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":1,"Near AC Vent":0,"Distance to Entrance (m)":11.8,"Distance to Restroom (m)":6.1,"View Openness Score":0,"open_late_term":false,"actual_free_rate":0.6818,"pred_mean_A":0.5798},"F-20":{"Building":2,"Floor":3,"Zone":"F","Room Type":"Quiet Reading Room","Seat Setup":"Individual, Surround-High Partition","Outside View":"Building View","Building 2":1,"Wide Desk":1,"Has Power Outlet":1,"Has Desktop Computer":0,"Near AC Vent":0,"Distance to Entrance (m)":18.3,"Distance to Restroom (m)":13.2,"View Openness Score":3,"open_late_term":false,"actual_free_rate":0.0795,"pred_mean_A":0.4685}},"metrics":{"test_auc":0.7482,"test_accuracy":0.6939,"seat_error":6.88,"train_rows":41829,"test_rows":17938,"all_rows":59767}}</script>
+<script>
+(function () {
+  const M = JSON.parse(document.getElementById("model-data").textContent);
+  const P = M.params, S = M.seats, IDS = Object.keys(S).sort();
+  const PH = { R: "Regular Classes", W: "Reading Week", E: "Exam Period" };
+  const PH_TH = { R: "เรียนปกติ", W: "สัปดาห์อ่านหนังสือ", E: "ช่วงสอบ" };
+  const DY_TH = { wd: "จันทร์–ศุกร์", we: "เสาร์–อาทิตย์" };
+  const ROOM = { "Main Reading Hall": "โถงอ่านหนังสือหลัก", "Quiet Reading Room": "ห้องอ่านหนังสือเงียบ", "Group Study Area": "พื้นที่อ่านหนังสือกลุ่ม", "24-Hour Zone": "โซน 24 ชั่วโมง" };
+  const SETUP = {
+    "Shared Table, No Partition": "โต๊ะยาว ไม่มีฉากกั้น", "Shared Table, Front-Low Partition": "โต๊ะยาว ฉากกั้นหน้าเตี้ย",
+    "Shared Table, Front-High Partition": "โต๊ะยาว ฉากกั้นหน้าสูง", "Individual, No Partition": "โต๊ะเดี่ยว ไม่มีฉากกั้น",
+    "Individual, Front-Low Partition": "โต๊ะเดี่ยว ฉากกั้นหน้าเตี้ย", "Individual, Front-High Partition": "โต๊ะเดี่ยว ฉากกั้นหน้าสูง",
+    "Individual, Surround-High Partition": "โต๊ะเดี่ยว ฉากกั้นล้อมรอบสูง", "Sofa/Soft Seating": "โซฟา/ที่นั่งนุ่ม"
+  };
+  const VIEW = { "No Outside View": "ไม่เห็นภายนอก", "Building View": "เห็นตัวอาคาร", "Partial Outside View": "เห็นภายนอกบางส่วน", "Full Outside View": "เห็นภายนอกเต็มที่" };
+  const OTHER = { "Is Weekend": "เสาร์–อาทิตย์", "Public Holiday": "วันหยุดนักขัตฤกษ์", "Building 2": "อาคาร 2", "Wide Desk": "โต๊ะกว้าง",
+    "Has Power Outlet": "มีปลั๊กไฟ", "Has Desktop Computer": "มีคอมพิวเตอร์", "Near AC Vent": "ใกล้ช่องลมแอร์",
+    "Distance to Entrance (per 10 m)": "ระยะทางเข้า (ต่อ 10 ม.)", "Distance to Restroom (per 10 m)": "ระยะห้องน้ำ (ต่อ 10 ม.)", "View Openness Score": "ความโล่งมุมมอง (ต่อ 1)" };
+  const labelOf = (k) => { const [a, b] = k.includes(": ") ? k.split(": ") : [k, null];
+    return b == null ? (OTHER[k] || k) : ({ "Room Type": ROOM, "Seat Setup": SETUP, "Outside View": VIEW }[a] || {})[b] || b; };
+
+  const $ = (id) => document.getElementById(id);
+  const pad = (h) => String(h).padStart(2, "0");
+  const hh = (h) => pad(h) + ":00";
+  const pct = (p) => Math.round(p * 100) + "%";
+  const fmtZ = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(3);
+
+  const store = { get() { try { return JSON.parse(localStorage.getItem("seat-dashboard-A") || "{}"); } catch (e) { return {}; } },
+                  set(v) { try { localStorage.setItem("seat-dashboard-A", JSON.stringify(v)); } catch (e) {} } };
+  const saved = store.get();
+  const state = { ph: saved.ph || "E", dy: saved.dy || "wd", hol: !!saved.hol,
+                  hour: Number.isInteger(saved.hour) ? saved.hour : 19, seat: S[saved.seat] ? saved.seat : "A-01" };
+  let what = null;   // attributes of the designed seat
+
+  // ---------- model ----------
+  const libOpen = (h) => state.ph === "R" ? (state.dy === "wd" ? h >= 8 && h <= 21 : h >= 10 && h <= 18) : true;
+  const seatOpen = (a, h) => libOpen(h) && (state.ph === "R" || a.open_late_term);
+  function terms(a, h) {
+    const t = [["ค่าเริ่มต้น (const)", P["const"]]];
+    t.push([`เวลา: ${PH_TH[state.ph]} ${hh(h)}`, P[`Phase x Hour: ${PH[state.ph]} ${pad(h)}`] || 0]);
+    if (state.dy === "we") t.push(["เสาร์–อาทิตย์", P["Is Weekend"]]);
+    if (state.hol) t.push(["วันหยุดนักขัตฤกษ์", P["Public Holiday"]]);
+    for (const [col, map] of [["Room Type", ROOM], ["Seat Setup", SETUP], ["Outside View", VIEW]]) {
+      const b = P[`${col}: ${a[col]}`];
+      if (b) t.push([map[a[col]], b]);
+    }
+    for (const k of ["Building 2", "Wide Desk", "Has Power Outlet", "Has Desktop Computer", "Near AC Vent"]) if (a[k]) t.push([OTHER[k], P[k]]);
+    t.push([`ระยะถึงทางเข้า ${(+a["Distance to Entrance (m)"]).toFixed(1)} ม.`, a["Distance to Entrance (m)"] / 10 * P["Distance to Entrance (per 10 m)"]]);
+    t.push([`ระยะถึงห้องน้ำ ${(+a["Distance to Restroom (m)"]).toFixed(1)} ม.`, a["Distance to Restroom (m)"] / 10 * P["Distance to Restroom (per 10 m)"]]);
+    if (+a["View Openness Score"]) t.push([`ความโล่งของมุมมอง ${a["View Openness Score"]}`, a["View Openness Score"] * P["View Openness Score"]]);
+    return t;
+  }
+  const zOf = (a, h) => terms(a, h).reduce((s, x) => s + x[1], 0);
+  const prob = (a, h) => seatOpen(a, h) ? 1 / (1 + Math.exp(-zOf(a, h))) : null;
+  const daySeries = (a) => Array.from({ length: 24 }, (_, h) => prob(a, h));
+
+  // ---------- color ramp ----------
+  let RAMP = [];
+  function readRamp() {
+    const cs = getComputedStyle(document.documentElement);
+    RAMP = [0, 1, 2, 3, 4, 5, 6].map((i) => { const hex = cs.getPropertyValue("--seq-" + i).trim().replace("#", "");
+      return [0, 2, 4].map((k) => parseInt(hex.slice(k, k + 2), 16)); });
+  }
+  function rampColor(p) {
+    const t = Math.max(0, Math.min(1, p)) * (RAMP.length - 1), i = Math.min(RAMP.length - 2, Math.floor(t)), f = t - i;
+    const c = RAMP[i].map((v, k) => Math.round(v + (RAMP[i + 1][k] - v) * f));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+
+  // ---------- controls ----------
+  function buildSeg(el, items, key) {
+    el.innerHTML = "";
+    Object.entries(items).forEach(([k, label]) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = label; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(state[key] === k));
+      b.addEventListener("click", () => { state[key] = k; render(); });
+      el.appendChild(b);
+    });
+  }
+  $("hour").addEventListener("input", (e) => { state.hour = +e.target.value; render(); });
+  $("hol").addEventListener("change", (e) => { state.hol = e.target.checked; render(); });
+  IDS.forEach((id) => { const o = document.createElement("option"); o.value = id; o.textContent = `${id} · ${ROOM[S[id]["Room Type"]]}`; $("seatSel").appendChild(o); });
+  $("seatSel").addEventListener("change", (e) => selectSeat(e.target.value));
+
+  // ---------- floor map (built once) ----------
+  const tileEls = {}, zoneInfo = {};
+  (function buildMap() {
+    const byB = {};
+    IDS.forEach((id) => { const s = S[id];
+      ((byB[s.Building] = byB[s.Building] || {})[s.Floor] = byB[s.Building][s.Floor] || { zone: s.Zone, room: s["Room Type"], ids: [] }).ids.push(id);
+      (zoneInfo[s.Zone] = zoneInfo[s.Zone] || { b: s.Building, f: s.Floor, room: s["Room Type"], ids: [] }).ids.push(id); });
+    Object.keys(byB).sort().forEach((b) => {
+      const col = document.createElement("div"); col.className = "building";
+      col.innerHTML = `<div class="building-name">อาคาร ${b}</div>`;
+      Object.keys(byB[b]).sort((x, y) => y - x).forEach((f) => {
+        const z = byB[b][f], zone = document.createElement("div"); zone.className = "zone";
+        zone.innerHTML = `<div class="zone-head"><b>ชั้น ${f} · โซน ${z.zone}</b><span>${ROOM[z.room]}</span></div>`;
+        const tiles = document.createElement("div"); tiles.className = "tiles";
+        z.ids.forEach((id) => { const t = document.createElement("button"); t.type = "button"; t.className = "tile";
+          t.innerHTML = `<span class="n">${id.slice(2)}</span><span class="v"></span>`;
+          t.addEventListener("click", () => selectSeat(id)); tileEls[id] = t; tiles.appendChild(t); });
+        zone.appendChild(tiles); col.appendChild(zone);
+      });
+      $("buildings").appendChild(col);
+    });
+  })();
+
+  // ---------- what-if form ----------
+  const fillSelect = (el, map) => { el.innerHTML = Object.entries(map).map(([k, v]) => `<option value="${k}">${v}</option>`).join(""); };
+  fillSelect($("wRoom"), ROOM); fillSelect($("wSetup"), SETUP); fillSelect($("wView"), VIEW);
+  const W_FIELDS = [["wRoom", "Room Type", "sel"], ["wSetup", "Seat Setup", "sel"], ["wView", "Outside View", "sel"],
+    ["wEnt", "Distance to Entrance (m)", "num"], ["wRest", "Distance to Restroom (m)", "num"], ["wOpen", "View Openness Score", "num"],
+    ["wPlug", "Has Power Outlet", "chk"], ["wWide", "Wide Desk", "chk"], ["wPc", "Has Desktop Computer", "chk"],
+    ["wAc", "Near AC Vent", "chk"], ["wB2", "Building 2", "chk"]];
+  function loadWhat() {
+    what = JSON.parse(JSON.stringify(S[state.seat]));
+    W_FIELDS.forEach(([id, k, t]) => { const el = $(id); if (t === "chk") el.checked = !!what[k]; else el.value = what[k]; });
+  }
+  W_FIELDS.forEach(([id, k, t]) => $(id).addEventListener("input", () => {
+    const el = $(id); what[k] = t === "chk" ? (el.checked ? 1 : 0) : t === "num" ? +el.value : el.value; renderWhat(); }));
+  $("wReset").addEventListener("click", () => { loadWhat(); renderWhat(); });
+
+  function selectSeat(id) { state.seat = id; loadWhat(); render(); }
+
+  // ---------- charts helpers ----------
+  // Draw every chart at the panel's real pixel width so text stays at its intended size.
+  const widthOf = (svg) => Math.max(300, Math.round(svg.getBoundingClientRect().width || 640));
+  function topRounded(x, yTop, w, h, r) { r = Math.min(r, h, w / 2); if (h <= 0) return "";
+    return `M${x},${yTop + h}V${yTop + r}Q${x},${yTop} ${x + r},${yTop}H${x + w - r}Q${x + w},${yTop} ${x + w},${yTop + r}V${yTop + h}Z`; }
+  function attachTip(svgId, wrapId, tipId, text) {
+    const svg = $(svgId), tip = $(tipId);
+    svg.addEventListener("pointermove", (e) => { const h = e.target.dataset && e.target.dataset.h;
+      if (h == null) { tip.hidden = true; return; }
+      const box = $(wrapId).getBoundingClientRect(), r = e.target.getBoundingClientRect();
+      tip.textContent = text(+h); tip.style.left = (r.left + r.width / 2 - box.left) + "px"; tip.style.top = (r.top - box.top + 20) + "px"; tip.hidden = false; });
+    svg.addEventListener("pointerleave", () => (tip.hidden = true));
+    svg.addEventListener("click", (e) => { const h = e.target.dataset && e.target.dataset.h; if (h != null) { state.hour = +h; render(); } });
+  }
+  function barChart(svg, H, values, maxV, fmtTick, ticks, bestH, labelFmt) {
+    const CW = widthOf(svg);
+    svg.setAttribute("viewBox", `0 0 ${CW} ${H}`);
+    const L = 40, R = 6, T = 22, B = 24, cw = (CW - L - R) / 24, ph = H - T - B, y = (v) => T + ph * (1 - v / maxV);
+    let o = `<rect class="c-sel" x="${L + state.hour * cw}" y="${T - 18}" width="${cw}" height="${ph + 18}" rx="3"></rect>`;
+    ticks.forEach((v) => { o += `<line class="c-grid" x1="${L}" x2="${CW - R}" y1="${y(v)}" y2="${y(v)}"></line><text class="c-axis" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${fmtTick(v)}</text>`; });
+    values.forEach((v, h) => { const x = L + h * cw + 2, w = cw - 4;
+      if (v == null) o += `<rect class="c-closed" x="${x}" y="${T}" width="${w}" height="${ph}" rx="2"></rect>`;
+      else o += `<path class="c-bar${h === bestH ? " best" : ""}" d="${topRounded(x, y(v), w, ph - (y(v) - T), 3)}"></path>`;
+      if (v != null && (h === bestH || h === state.hour)) o += `<text class="c-val" x="${x + w / 2}" y="${y(v) - 5}" text-anchor="middle">${labelFmt(v)}</text>`;
+      if (h % 3 === 0) o += `<text class="c-axis" x="${L + h * cw + cw / 2}" y="${H - 7}" text-anchor="middle">${pad(h)}</text>`;
+      o += `<rect class="c-hit" data-h="${h}" x="${L + h * cw}" y="${T - 18}" width="${cw}" height="${ph + 18 + B}"></rect>`; });
+    svg.innerHTML = o;
+  }
+  const argmax = (arr) => arr.reduce((b, v, i) => (v != null && (b < 0 || v > arr[b]) ? i : b), -1);
+
+  // ---------- renderers ----------
+  let P_NOW = {};   // seat -> probability at the selected hour
+  function renderOverview() {
+    const h = state.hour;
+    P_NOW = Object.fromEntries(IDS.map((id) => [id, prob(S[id], h)]));
+    const open = IDS.filter((id) => P_NOW[id] != null);
+    const exp = open.reduce((s, id) => s + P_NOW[id], 0);
+    $("k1k").textContent = `ที่นั่งที่คาดว่าว่าง ตอน ${hh(h)}`;
+    $("k1v").innerHTML = open.length ? `${exp.toFixed(1)} <small>จาก ${open.length} ที่</small>` : "ปิด";
+    $("k1d").textContent = open.length ? `เฉลี่ยที่นั่งละ ${pct(exp / open.length)}` : "หอสมุดปิดเวลานี้";
+
+    // zones
+    const zs = Object.entries(zoneInfo).map(([z, info]) => { const ids = info.ids.filter((id) => P_NOW[id] != null);
+      const e = ids.reduce((s, id) => s + P_NOW[id], 0); return { z, info, n: ids.length, e, avg: ids.length ? e / ids.length : null }; })
+      .sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
+    const best = zs.find((x) => x.avg != null);
+    $("k2v").textContent = best ? `โซน ${best.z} · ${pct(best.avg)}` : "–";
+    $("k2d").textContent = best ? `อาคาร ${best.info.b} ชั้น ${best.info.f} · ${ROOM[best.info.room]}` : "หอสมุดปิดเวลานี้";
+    $("zonesSub").textContent = `${PH_TH[state.ph]} · ${DY_TH[state.dy]} · ${hh(h)}`;
+    $("zones").innerHTML = zs.map((x, i) => x.avg == null
+      ? `<li class="zone-row closed"><div class="zn">โซน ${x.z}<small>อาคาร ${x.info.b} ชั้น ${x.info.f}</small></div><div class="zd">${ROOM[x.info.room]}<div class="zbar"><i style="width:0"></i></div></div><div class="zv">ปิด</div></li>`
+      : `<li class="zone-row${i === 0 ? " best" : ""}"><div class="zn">โซน ${x.z}<small>อาคาร ${x.info.b} ชั้น ${x.info.f}</small></div><div class="zd">${ROOM[x.info.room]}<div class="zbar"><i style="width:${(x.avg * 100).toFixed(1)}%"></i></div></div><div class="zv">${pct(x.avg)}<small>≈ ${x.e.toFixed(1)} จาก ${x.n} ที่</small></div></li>`).join("");
+
+    // hourly library chart
+    const hours = Array.from({ length: 24 }, (_, hr) => { const ids = IDS.filter((id) => seatOpen(S[id], hr)); return ids.length ? ids.reduce((s, id) => s + prob(S[id], hr), 0) : null; });
+    const maxOpen = state.ph === "R" ? IDS.length : IDS.filter((id) => S[id].open_late_term).length;
+    const bh = argmax(hours);
+    $("k3v").textContent = bh >= 0 ? hh(bh) : "–";
+    $("k3d").textContent = bh >= 0 ? `คาดว่าว่าง ${hours[bh].toFixed(1)} ที่ · ${PH_TH[state.ph]} ${DY_TH[state.dy]}` : "";
+    const step = maxOpen / 4;
+    barChart($("hourChart"), 240, hours, maxOpen, (v) => Math.round(v), [0, step, 2 * step, 3 * step, maxOpen], bh, (v) => v.toFixed(0));
+    HOURS_CACHE = hours;
+  }
+  let HOURS_CACHE = [];
+
+  function renderMap() {
+    IDS.forEach((id) => { const t = tileEls[id], p = P_NOW[id], vEl = t.querySelector(".v");
+      t.setAttribute("aria-pressed", String(id === state.seat));
+      if (p == null) { t.classList.add("closed"); t.style.background = ""; t.style.color = ""; vEl.textContent = "ปิด"; t.setAttribute("aria-label", `${id} ปิดเวลานี้`); }
+      else { t.classList.remove("closed"); t.style.background = rampColor(p); t.style.color = p >= 0.55 ? "var(--tile-ink-high)" : "var(--tile-ink-low)";
+        vEl.textContent = pct(p); t.setAttribute("aria-label", `${id} โอกาสว่าง ${pct(p)}`); } });
+    $("mapSub").textContent = `โอกาสว่างตอน ${hh(state.hour)} · ${PH_TH[state.ph]} · ${DY_TH[state.dy]}`;
+  }
+
+  function renderSeat() {
+    const id = state.seat, a = S[id], ser = daySeries(a), h = state.hour;
+    $("sId").textContent = id; $("seatSel").value = id;
+    $("sChips").innerHTML = [`อาคาร ${a.Building} · ชั้น ${a.Floor} · โซน ${a.Zone}`, ROOM[a["Room Type"]], SETUP[a["Seat Setup"]],
+      a["Has Power Outlet"] ? "มีปลั๊กไฟ" : "ไม่มีปลั๊กไฟ", VIEW[a["Outside View"]]].map((c) => `<span class="chip">${c}</span>`).join("");
+    $("sNowK").textContent = `โอกาสว่างตอน ${hh(h)}`;
+    $("sNow").textContent = ser[h] == null ? "ปิด" : pct(ser[h]);
+    const bh = argmax(ser);
+    $("sBest").innerHTML = bh >= 0 ? `${hh(bh)}<small>${pct(ser[bh])}</small>` : "ปิด";
+    $("sCal").innerHTML = `${pct(a.pred_mean_A)} <small>/ ${pct(a.actual_free_rate)}</small>`;
+    $("sChartT").textContent = bh >= 0 ? `โอกาสว่างรายชั่วโมง · ${PH_TH[state.ph]} · ${DY_TH[state.dy]} (แตะแท่งเพื่อเปลี่ยนเวลา)` : `โซน ${a.Zone} ปิดในช่วง${PH_TH[state.ph]}`;
+    barChart($("seatChart"), 200, ser, 1, (v) => Math.round(v * 100) + "%", [0, 0.25, 0.5, 0.75, 1], bh, pct);
+
+    // why
+    if (ser[h] == null) { $("whyT").textContent = "ทำไมโมเดลทายแบบนี้"; $("why").innerHTML = `<p class="sub">ที่นั่งนี้ปิดตอน ${hh(h)} ลองเลือกเวลาอื่น</p>`; return; }
+    const t = terms(a, h), z = t.reduce((s, x) => s + x[1], 0), mx = Math.max(2.5, ...t.map((x) => Math.abs(x[1])));
+    $("whyT").textContent = `ทำไมโมเดลทายว่า ${id} ตอน ${hh(h)} มีโอกาสว่าง ${pct(ser[h])}`;
+    $("why").innerHTML = t.map(([lab, c]) => { const w = Math.min(50, Math.abs(c) / mx * 50), left = c >= 0 ? 50 : 50 - w;
+      return `<div class="why-row"><span>${lab}</span><span class="wb"><span style="left:50%;width:1px;background:var(--line-strong)"></span><span style="left:${left}%;width:${w}%;background:${c >= 0 ? "var(--bar)" : "var(--neg)"}"></span></span><span class="wv">${fmtZ(c)}</span></div>`; }).join("")
+      + `<div class="why-total"><span>รวม z = <b>${fmtZ(z)}</b></span><span>p = 1 / (1 + e<sup>−z</sup>) = <b>${(1 / (1 + Math.exp(-z))).toFixed(3)}</b> → โอกาสว่าง <b>${pct(1 / (1 + Math.exp(-z)))}</b></span></div>`;
+  }
+
+  function renderWhat() {
+    const a = S[state.seat], h = state.hour;
+    $("wEntV").textContent = (+what["Distance to Entrance (m)"]).toFixed(1) + " ม.";
+    $("wRestV").textContent = (+what["Distance to Restroom (m)"]).toFixed(1) + " ม.";
+    $("wOpenV").textContent = what["View Openness Score"];
+    const base = daySeries(a), mod = daySeries(what);
+    $("wBaseK").textContent = `ที่นั่งเดิม (${state.seat}) ตอน ${hh(h)}`;
+    if (base[h] == null) { $("wBase").textContent = "ปิด"; $("wMod").textContent = "ปิด"; $("wDelta").textContent = "–"; }
+    else { const d = (mod[h] - base[h]) * 100;
+      $("wBase").textContent = pct(base[h]); $("wMod").textContent = pct(mod[h]);
+      $("wDelta").innerHTML = `<span class="${d >= 0 ? "delta-up" : "delta-down"}">${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)} จุด</span>`; }
+    // line chart
+    const CW = widthOf($("wChart"));
+    $("wChart").setAttribute("viewBox", `0 0 ${CW} 190`);
+    const H = 190, L = 40, R = 8, T = 14, B = 24, cw = (CW - L - R) / 23, ph = H - T - B, x = (hr) => L + hr * cw, y = (v) => T + ph * (1 - v);
+    let o = `<line class="c-grid" x1="${x(h)}" x2="${x(h)}" y1="${T}" y2="${T + ph}" style="stroke:var(--line-strong);stroke-dasharray:2 3"></line>`;
+    [0, 0.25, 0.5, 0.75, 1].forEach((v) => { o += `<line class="${v === 0.5 ? "c-half" : "c-grid"}" x1="${L}" x2="${CW - R}" y1="${y(v)}" y2="${y(v)}"></line><text class="c-axis" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v * 100}%</text>`; });
+    for (let hr = 0; hr < 24; hr += 3) o += `<text class="c-axis" x="${x(hr)}" y="${H - 6}" text-anchor="middle">${pad(hr)}</text>`;
+    const path = (ser) => { let d = "", pen = false; ser.forEach((v, hr) => { if (v == null) { pen = false; return; } d += `${pen ? "L" : "M"}${x(hr).toFixed(1)} ${y(v).toFixed(1)}`; pen = true; }); return d; };
+    o += `<path class="c-line base" d="${path(base)}"></path><path class="c-line mod" d="${path(mod)}"></path>`;
+    if (mod[h] != null) o += `<circle class="c-dot" cx="${x(h)}" cy="${y(mod[h])}" r="4.5"></circle>`;
+    if (!base.some((v) => v != null)) o += `<text class="c-lab" x="${CW / 2}" y="${H / 2}" text-anchor="middle">ที่นั่งนี้ปิดในช่วง${PH_TH[state.ph]}</text>`;
+    $("wChart").innerHTML = o;
+  }
+
+  function renderOR() {
+    const items = Object.entries(M.odds_ratio).map(([k, v]) => ({ k, ...v })).sort((a, b) => a.or - b.or);
+    const CW = widthOf($("orChart"));
+    const H = 34 + items.length * 22, L = Math.min(210, Math.round(CW * 0.55)), R = 16, T = 26, lo = 0.25, hi = 2.6;
+    const x = (v) => L + (Math.log(Math.max(lo, Math.min(hi, v))) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) * (CW - L - R);
+    $("orChart").setAttribute("viewBox", `0 0 ${CW} ${H + 30}`);
+    let o = `<text class="c-lab" x="${x(1) - 8}" y="14" text-anchor="end">← ว่างยากขึ้น</text><text class="c-lab" x="${x(1) + 8}" y="14">ว่างง่ายขึ้น →</text>`;
+    [0.25, 0.5, 1, 2].forEach((v) => { o += `<line class="${v === 1 ? "c-half" : "c-grid"}" x1="${x(v)}" x2="${x(v)}" y1="${T - 6}" y2="${H}"></line><text class="c-axis" x="${x(v)}" y="${H + 16}" text-anchor="middle">×${v}</text>`; });
+    items.forEach((it, i) => { const yy = T + 10 + i * 22, sig = it.p < 0.05;
+      o += `<text class="c-lab" x="${L - 10}" y="${yy + 4}" text-anchor="end">${labelOf(it.k)}</text>`;
+      o += `<line class="c-ci" x1="${x(it.lo)}" x2="${x(it.hi)}" y1="${yy}" y2="${yy}"></line>`;
+      o += `<circle class="c-dot${sig ? "" : " hollow"}" cx="${x(it.or)}" cy="${yy}" r="5"><title>${labelOf(it.k)}: ×${it.or.toFixed(2)} (95% CI ${it.lo.toFixed(2)}–${it.hi.toFixed(2)}, p = ${it.p.toFixed(3)})</title></circle>`; });
+    $("orChart").innerHTML = o;
+  }
+
+  function render() {
+    buildSeg($("ph"), PH_TH, "ph"); buildSeg($("dy"), DY_TH, "dy");
+    $("hour").value = state.hour; $("hourOut").textContent = hh(state.hour); $("hol").checked = state.hol;
+    renderOverview(); renderMap(); renderSeat(); renderWhat();
+    store.set(state);
+  }
+
+  attachTip("hourChart", "hourWrap", "hourTip", (h) => HOURS_CACHE[h] == null ? `${hh(h)} · ปิด` : `${hh(h)} · คาดว่าว่าง ${HOURS_CACHE[h].toFixed(1)} ที่`);
+  attachTip("seatChart", "seatWrap", "seatTip", (h) => { const p = prob(S[state.seat], h); return `${hh(h)} · ${p == null ? "ปิด" : "โอกาสว่าง " + pct(p)}`; });
+
+  const mt = M.metrics;
+  $("k4v").textContent = `AUC ${mt.test_auc.toFixed(3)}`;
+  $("k4d").textContent = `ทายถูก ${(mt.test_accuracy * 100).toFixed(1)}% · % ว่างรายที่นั่งคลาดเฉลี่ย ${mt.seat_error.toFixed(1)} จุด`;
+
+  readRamp(); loadWhat(); renderOR(); render();
+  let resizeTimer = null;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { renderOR(); renderOverview(); renderSeat(); renderWhat(); }, 150); });
+  const rerender = () => { readRamp(); renderMap(); };
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerender); } catch (e) {}
+  new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>
+</body>
+</html>
